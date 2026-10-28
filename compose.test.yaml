@@ -1,0 +1,15 @@
+name: eduping-test
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: eduping_test
+      POSTGRES_USER: testbot
+      POSTGRES_PASSWORD: test-only-local
+    ports: ['127.0.0.1:55439:5432']
+    tmpfs: [/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U testbot -d eduping_test']
+      interval: 2s
+      timeout: 3s
+      retries: 20

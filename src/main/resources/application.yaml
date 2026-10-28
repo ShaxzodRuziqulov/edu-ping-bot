@@ -1,0 +1,35 @@
+spring:
+  application:
+    name: eduping
+  config:
+    import: optional:file:.env[.properties]
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/eduping}
+    username: ${DATABASE_USER:eduping}
+    password: ${DATABASE_PASSWORD:}
+    hikari:
+      maximum-pool-size: 8
+      connection-timeout: 5000
+  flyway:
+    enabled: true
+  lifecycle:
+    timeout-per-shutdown-phase: 45s
+server:
+  address: ${SERVER_ADDRESS:127.0.0.1}
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+  error:
+    include-message: never
+    include-stacktrace: never
+app:
+  workers-enabled: ${BOT_WORKERS_ENABLED:true}
+  token: ${TELEGRAM_BOT_TOKEN:}
+  teacher-ids: ${TEACHER_IDS:}
+  telegram-base-url: ${TELEGRAM_BASE_URL:https://api.telegram.org}
+  # Used to build class invite links: https://t.me/<username>?start=<code>
+  bot-username: ${BOT_USERNAME:EduPingBot}
+  time-zone: ${TIME_ZONE:Asia/Tashkent}
+logging:
+  level:
+    uz.eduping: INFO
+    org.springframework.web: WARN

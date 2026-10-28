@@ -1,0 +1,4 @@
+workflows:
+  syncSpecToCollection:
+    - spec: ../postman/specs/health.yaml
+      collection: ../postman/collections/EduPing-health

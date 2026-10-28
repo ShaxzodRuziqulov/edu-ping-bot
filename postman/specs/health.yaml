@@ -1,0 +1,45 @@
+openapi: 3.0.3
+info:
+  title: EduPing operational API
+  version: 1.0.0
+  description: Read-only health endpoints. Business operations are Telegram private-chat commands documented in docs/BOT-CONTRACT.md.
+servers:
+  - url: http://127.0.0.1:8080
+paths:
+  /health/live:
+    get:
+      operationId: liveness
+      summary: Check application process
+      responses:
+        '200':
+          description: Process responding
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: {type: string, enum: [UP]}
+  /health/ready:
+    get:
+      operationId: readiness
+      summary: Check database connectivity
+      responses:
+        '200':
+          description: Database query succeeded
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: {type: string, enum: [UP]}
+        '503':
+          description: Database unavailable
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: {type: string, enum: [DOWN]}

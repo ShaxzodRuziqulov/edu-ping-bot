@@ -1,0 +1,9 @@
+.env
+.cache/
+target/
+backups/
+*.log
+sim.ndjson
+sim.err
+postman/.dependencies/
+.idea/

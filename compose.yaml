@@ -1,0 +1,43 @@
+name: eduping
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: eduping
+      POSTGRES_USER: eduping
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:?Set a strong DATABASE_PASSWORD in .env}
+    volumes: ['pgdata:/var/lib/postgresql/data']
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U eduping -d eduping']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 768m
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: '3'}
+  bot:
+    build: .
+    environment:
+      DATABASE_URL: jdbc:postgresql://db:5432/eduping
+      DATABASE_USER: eduping
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?Set TELEGRAM_BOT_TOKEN in .env}
+      TEACHER_IDS: ${TEACHER_IDS:?Set TEACHER_IDS in .env}
+      SERVER_ADDRESS: 0.0.0.0
+    ports: ['127.0.0.1:8080:8080']
+    depends_on:
+      db: {condition: service_healthy}
+    restart: unless-stopped
+    stop_grace_period: 50s
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    mem_limit: 768m
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: '3'}
+volumes:
+  pgdata:

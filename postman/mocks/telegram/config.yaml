@@ -1,0 +1,10 @@
+version: 1
+interceptRequests: true
+name: telegram
+slug: telegram
+protocol: http
+port: 4900
+scenarios:
+  - name: default
+    path: ./fixture.js
+    default: true
