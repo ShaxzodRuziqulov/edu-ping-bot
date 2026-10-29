@@ -69,9 +69,12 @@ public class DurableQueue {
             boolean dead=n>=MAX_ATTEMPTS;
             db.update("UPDATE inbox SET attempts=?,state=?,available_at=?,error_code='PROCESSING_ERROR' WHERE update_id=?",n,dead?"FAILED":"PENDING",later(delay(n)),id);
             long actor=((Number)rows.get(0).get("actor_id")).longValue();
+            var languages=db.queryForList("SELECT language FROM app_user WHERE id=?",String.class,actor);
             // Tell the person once, so a silent bot is not mistaken for a received message.
             if(n==1 && actor>0) db.update("INSERT INTO outbox(job_type,chat_id,method,payload) VALUES ('API',?,'sendMessage',?)",actor,
-                Json.write(Map.of("chat_id",actor,"text","⚠️ Texnik nosozlik. Xabaringiz saqlangan, bot uni qayta ishlashga urinmoqda.","disable_notification",true)));
+                Json.write(Map.of("chat_id",actor,"text",Messages.text(
+                    languages.isEmpty()?null:languages.get(0),
+                    "⚠️ Texnik nosozlik. Xabaringiz saqlangan, bot uni qayta ishlashga urinmoqda."),"disable_notification",true)));
         });
     }
 

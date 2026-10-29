@@ -4,6 +4,16 @@ Bot faqat shaxsiy chatda ishlaydi. Foydalanuvchi `update.from.id` orqali aniqlan
 
 Asosiy ish **tugmalar** bilan bajariladi: pastdagi doimiy menyu va xabarlar ostidagi tugmalar. Slash-buyruqlar tajribali foydalanuvchilar va eski tugmalar uchun saqlangan.
 
+## Til tanlash
+
+- Yangi foydalanuvchiga avval «🇺🇿 O‘zbekcha» va «🇷🇺 Русский» tugmalari ko‘rsatiladi. Tanlovdan oldin biznes amallar bajarilmaydi.
+- Tanlov `app_user.language` da saqlanadi va restartdan keyin ham qoladi. Mavjud foydalanuvchilar V4 migratsiyada o‘zbekchada qoladi.
+- `/language`, `/lang` yoki «🌐 Til / Язык» orqali til almashtiriladi; joriy yozish rejimi va qoralama saqlanadi.
+- Taklif havolasi yoki kod bilan kirish til tanlanganidan keyin davom etadi.
+- Menyu, yordam, xatolar, tarix sarlavhalari va bildirishnomalar qabul qiluvchining tilida. Ustoz va o‘quvchi mustaqil til tanlaydi. Ismlar, sinf nomlari va yozishmalar tarjima qilinmaydi.
+- Avval yuborilgan xabarlar va navbatdagi tayyor xabarlar qayta tarjima qilinmaydi. Eski o‘zbekcha va ruscha menyu tugmalari ishlashda davom etadi.
+- Telegram «/» menyusi ham tanlangan tilga moslanadi. HTTP health shartnomasi o‘zgarmaydi.
+
 ## O‘quvchi yo‘li
 
 1. Ustoz bergan havolani bosadi (`t.me/<bot>?start=KOD`) yoki `/start` dan keyin kodni yuboradi.

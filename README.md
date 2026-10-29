@@ -6,6 +6,7 @@ Java 17 · Spring Boot 4.1.2 · PostgreSQL 17 · Flyway · Docker Compose.
 
 ## Tayyor imkoniyatlar
 
+- O‘zbekcha va ruscha interfeys: yangi foydalanuvchi til tanlaydi; tanlov saqlanadi. «🌐 Til / Язык» yoki `/language` orqali almashtiriladi. Ustoz va o‘quvchi bildirishnomalarni o‘z tilida oladi.
 - Bir o‘qituvchi uchun boshlash; sinflar o‘qituvchiga tegishli, keyinchalik qo‘shimcha o‘qituvchi ID kiritish mumkin.
 - Sinf taklif kodi, kodni yangilash, a’zolar ro‘yxati va chiqarish.
 - Murojaat ochish, davom ettirish, javob yozish, yopish va sahifalangan tarix.

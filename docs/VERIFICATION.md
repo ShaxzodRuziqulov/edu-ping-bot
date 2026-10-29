@@ -1,5 +1,15 @@
 # Tekshiruv natijalari
 
+## 2026-10-29 — O‘zbekcha va ruscha interfeys (V4)
+
+`mvnw.cmd -o verify`: **37 test, 0 failure, 0 error, 0 skipped; BUILD SUCCESS**. Yakuniy `target/eduping-1.0.0.jar` yig‘ildi.
+
+Tekshiruv alohida, vaqtinchalik PostgreSQL 17.4 klasteridagi `eduping_test` bazasi va mavjud `postman/mocks/telegram/fixture.js` HTTP fixture’i bilan bajarildi. Postman CLI simulyatsiyasi dataset-daemon `0xc0000008` xatosi bilan ishga tushmadi; shu fixture Node orqali, JSON body va `/telegram` route prefiksi adapteri bilan xizmat qildi. Bu natija Postman simulation run muvaffaqiyati sifatida hisoblanmaydi. `postman skills status` tarmoqdagi `ENOTFOUND` tufayli bajarilmadi. Cloudga hech narsa yuborilmadi.
+
+Yangi qamrov: birinchi kirishda majburiy til tanlash, noto‘g‘ri tilni rad etish, taklif havolasi va oddiy kodni eslab qolish, til tanlovining service qayta yaratilganda saqlanishi, yozish qoralamasi/ism/sinf kiritish holatini yo‘qotmasdan almashtirish, ruscha menyu va xatolar, yordam/maxfiylik/tarix, har ikki tomonning mustaqil tilidagi bildirishnomalar, foydalanuvchi matnini tarjima qilmaslik hamda `setMyCommands` ning lokal HTTP orqali yetkazilishi.
+
+V4 migratsiya vaqtinchalik jadvalda ham tekshirildi: mavjud foydalanuvchiga `uz` yozildi, keyin yaratilgan foydalanuvchida til tanlanmaguncha `NULL` qoldi. Tekshiruv tranzaksiyasi rollback qilindi. Jonli baza va `.env` o‘zgartirilmadi. Haqiqiy Telegram interfeysida sinov va ishlab turgan botni qayta ishga tushirish bajarilmadi.
+
 ## 2026-10-28 — EduPing: tugmali oqim va navbat tuzatishlari (V3)
 
 Lokal Windows, Java 17.0.15, Temp papkada vaqtinchalik PostgreSQL 17.4 klasteri (`ustozquti_test`), Postman Telegram simulyatsiyasi. Foydalanuvchining `teacher_box` bazasiga tegilmadi; vaqtinchalik klaster tekshiruvdan keyin o‘chirildi.

@@ -6,6 +6,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import javax.sql.DataSource;
+import org.springframework.jdbc.core.JdbcTemplate;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -27,16 +28,17 @@ public class Workers {
 
     /** Fills Telegram's "/" menu: student commands for everyone, teacher commands only in teachers' chats. */
     @EventListener(ApplicationReadyEvent.class) public void registerCommands() {
-        var student=List.of(command("start","Boshlash"),command("new","Yangi savol"),command("my","Savollarim"),command("classes","Sinflarim"),command("name","Ismni o‘zgartirish"),command("help","Yordam"),command("privacy","Maxfiylik"));
-        var teacher=List.of(command("inbox","Kelgan savollar"),command("classes","Sinflar"),command("class","Yangi sinf"),command("stats","Holat"),command("help","Yordam"));
+        var student=BotCommands.commands(false,"uz");
         try { telegram.call("setMyCommands",Map.of("commands",student)); }
         catch(TelegramClient.Failure e) { LOG.warn("Could not register commands: HTTP {}",e.code); }
+        var db=new JdbcTemplate(datasource);
         for(long id:config.teachers()) {
-            try { telegram.call("setMyCommands",Map.of("commands",teacher,"scope",Map.of("type","chat","chat_id",id))); }
+            var languages=db.queryForList("SELECT language FROM app_user WHERE id=?",String.class,id);
+            String language=languages.isEmpty()?"uz":languages.get(0);
+            try { telegram.call("setMyCommands",Map.of("commands",BotCommands.commands(true,language),"scope",Map.of("type","chat","chat_id",id))); }
             catch(TelegramClient.Failure e) { LOG.warn("Could not register teacher commands (teacher must /start the bot first): HTTP {}",e.code); }
         }
     }
-    private static Map<String,String> command(String name,String description) { return Map.of("command",name,"description",description); }
 
     // getUpdates itself waits up to 25 s for news, so the short delay only matters between batches.
     @Scheduled(fixedDelay=200) public void poll() {

@@ -40,8 +40,11 @@ class BotIntegrationTest {
         var query=Map.of("id","cb"+(sequence+1),"from",Map.of("id",actor,"first_name","User "+actor,"is_bot",false),"message",Map.of("message_id",1,"chat",Map.of("id",actor,"type","private")),"data",data);
         return Json.read(Json.write(Map.of("update_id",++sequence,"callback_query",query)));
     }
-    private void send(long actor,Object fields) { queue.ingest(Json.read("["+update(actor,fields)+"]")); assertTrue(queue.processInbox()); }
-    private void tap(long actor,String data) { queue.ingest(Json.read("["+callback(actor,data)+"]")); assertTrue(queue.processInbox()); }
+    // Existing workflow tests model users who have already chosen Uzbek.
+    private void existingUser(long actor) { db.update("INSERT INTO app_user(id,display_name,language) VALUES (?,?,'uz') ON CONFLICT DO NOTHING",actor,"User "+actor); }
+    private void send(long actor,Object fields) { existingUser(actor); rawSend(actor,fields); }
+    private void rawSend(long actor,Object fields) { queue.ingest(Json.read("["+update(actor,fields)+"]")); assertTrue(queue.processInbox()); }
+    private void tap(long actor,String data) { existingUser(actor); queue.ingest(Json.read("["+callback(actor,data)+"]")); assertTrue(queue.processInbox()); }
     private long count(String sql) { return Objects.requireNonNull(db.queryForObject(sql,Long.class)); }
     private String code() { return db.queryForObject("SELECT invite_code FROM classroom WHERE id=1",String.class); }
     private void clearOutbox() { db.update("DELETE FROM outbox"); db.update("DELETE FROM delivery_clock"); }
@@ -66,6 +69,99 @@ class BotIntegrationTest {
         assertEquals("CLOSED",db.queryForObject("SELECT status FROM ticket WHERE id=1",String.class));
         assertEquals(0,count("SELECT count(*) FROM chat_session"));
         send(2001,"/continue 1");assertTrue(pendingText().contains("yopilgan"));
+    }
+    @Test void firstContactRequiresExplicitLanguageAndKeepsInvite() {
+        send(1001,"/class 7-A");
+        clearOutbox();
+        rawSend(2001,"/start "+code());
+        assertNull(db.queryForObject("SELECT language FROM app_user WHERE id=2001",String.class));
+        assertEquals(0,count("SELECT count(*) FROM membership"));
+        assertTrue(sentTo(2001).contains("Выберите язык"));
+        tap(2001,"lang:ru");
+        assertEquals("ru",db.queryForObject("SELECT language FROM app_user WHERE id=2001",String.class));
+        assertEquals(1,count("SELECT count(*) FROM membership"));
+        assertTrue(sentTo(2001).contains("имя и фамилию"));
+        clearOutbox();rawSend(2001,"Иван <b>Иванов</b>");
+        assertTrue(sentTo(2001).contains("Спасибо"));
+        assertTrue(sentTo(2001).contains("✍️ Новый вопрос"));
+        assertTrue(sentTo(2001).contains("Иван &lt;b&gt;Иванов&lt;/b&gt;"));
+    }
+    @Test void firstContactCanChooseUzbekAndInvalidChoiceDoesNotGrantAccess() {
+        rawSend(1001,"/class Secret");tap(1001,"lang:en");
+        assertEquals(0,count("SELECT count(*) FROM classroom"));
+        assertNull(db.queryForObject("SELECT language FROM app_user WHERE id=1001",String.class));
+        tap(1001,"lang:uz");clearOutbox();send(1001,BotService.ADD_CLASS);send(1001,"7-A");
+        assertTrue(sentTo(1001).contains("Sinf yaratildi"));
+    }
+    @Test void languageSurvivesReconstructionAndSwitchKeepsDraft() {
+        onboard();send(2001,BotService.NEW);
+        send(2001,"/language");tap(2001,"lang:ru");
+        assertNull(db.queryForObject("SELECT ticket_id FROM chat_session WHERE user_id=2001",Long.class));
+        assertEquals("WRITE",db.queryForObject("SELECT mode FROM chat_session WHERE user_id=2001",String.class));
+        clearOutbox();var restarted=new BotService(db,properties);
+        new org.springframework.transaction.support.TransactionTemplate(new org.springframework.jdbc.datasource.DataSourceTransactionManager(db.getDataSource()))
+                .executeWithoutResult(s->restarted.handle(update(2001,"Savol yuborilmadi.")));
+        assertEquals("Savol yuborilmadi.",db.queryForObject("SELECT body FROM ticket_message",String.class));
+        assertTrue(sentTo(2001).contains("Ваш вопрос"));
+        assertTrue(sentTo(1001).contains("Savol yuborilmadi."),"user content stays unchanged even when it matches a UI string");
+        send(2001,"✅ Готово");assertEquals(0,count("SELECT count(*) FROM chat_session"));
+        send(2001,"🌐 Til / Язык");tap(2001,"lang:uz");clearOutbox();send(2001,BotService.MY);
+        assertTrue(sentTo(2001).contains("Savollaringiz"));
+    }
+    @Test void notificationsUseRecipientsLanguageInBothDirections() {
+        onboard();tap(2001,"lang:ru");clearOutbox();send(2001,"✍️ Новый вопрос");send(2001,"Почему 2 < 3?");
+        assertTrue(sentTo(1001).contains("✍️ Javob berish"));
+        assertFalse(sentTo(1001).contains("✍️ Ответить"));
+        tap(1001,"r:1");send(1001,"Chunki 2 kichik.");
+        assertTrue(sentTo(2001).contains("Ответ учителя"));
+        assertTrue(sentTo(2001).contains("Chunki 2 kichik."));
+        assertTrue(sentTo(2001).contains("✅ Решено"));
+        clearOutbox();tap(1001,"c:1");
+        assertTrue(sentTo(2001).contains("Учитель закрыл вопрос"));
+        assertTrue(sentTo(1001).contains("yopildi"));
+    }
+    @Test void russianTeacherSeesLocalizedClassesListsHistoryAndErrors() {
+        ask();tap(1001,"lang:ru");clearOutbox();
+        send(1001,"🏫 Классы");tap(1001,"cl:1");send(1001,"📥 Вопросы");tap(1001,"v:1");send(1001,"📊 Статистика");send(1001,"/help");send(1001,"/privacy");
+        String text=sentTo(1001);
+        assertTrue(text.contains("Ваши классы") && text.contains("Ссылка-приглашение"));
+        assertTrue(text.contains("Открытые вопросы") && text.contains("Статистика"));
+        assertTrue(text.contains("Для учителя") && text.contains("Конфиденциальность"));
+        assertTrue(text.contains("Masalani tushuntirib bering"));
+        clearOutbox();send(1001,"/view nope");send(1001,"/view 999");
+        assertTrue(sentTo(1001).contains("Неверный номер"));assertTrue(sentTo(1001).contains("нет доступа"));
+        clearOutbox();tap(1001,"rmy:1:2001");
+        assertTrue(sentTo(2001).contains("chiqarildingiz"));
+        assertTrue(sentTo(1001).contains("исключён"));
+    }
+    @Test void russianStudentErrorsHistoryAndRemovalStayRussian() {
+        ask();tap(2001,"lang:ru");clearOutbox();
+        send(2001,"/privacy");send(2001,"/help");send(2001,"/view 1");
+        send(2001,Map.of("video",Map.of("file_id","large","file_size",TelegramClient.MAX_FILE_BYTES+1)));
+        assertTrue(sentTo(2001).contains("20 МБ"));assertTrue(sentTo(2001).contains("Конфиденциальность"));
+        assertTrue(sentTo(2001).contains("Для ученика"));assertTrue(sentTo(2001).contains("👤 Вы"));
+        clearOutbox();tap(1001,"rmy:1:2001");assertTrue(sentTo(2001).contains("исключены из класса"));
+    }
+    @Test void switchingLanguageDoesNotDiscardNameOrClassEntry() {
+        rawSend(1001,"/start");tap(1001,"lang:ru");send(1001,"➕ Новый класс");
+        send(1001,"/lang");tap(1001,"lang:uz");send(1001,"7-A");
+        rawSend(2001,code());tap(2001,"lang:uz");
+        send(2001,"/language");tap(2001,"lang:ru");send(2001,"Иван Иванов");
+        assertEquals("Иван Иванов",db.queryForObject("SELECT full_name FROM app_user WHERE id=2001",String.class));
+        assertEquals(1,count("SELECT count(*) FROM membership"));
+    }
+    @Test void selectedCommandMenuIsDeliveredOverHttp() throws Exception {
+        rawSend(2001,"/start");tap(2001,"lang:ru");
+        while(queue.deliverOne()) db.update("DELETE FROM delivery_clock");
+        assertTrue(calls().toString().contains("setMyCommands"));
+        assertTrue(calls().toString().contains("Выбрать язык"));
+        assertEquals(0,count("SELECT count(*) FROM outbox WHERE state IN ('PENDING','FAILED')"));
+    }
+    @Test void localizationDoesNotRequireAnExistingUserForFallbackNames() {
+        send(1001,"/class 7-A");tap(1001,"lang:ru");clearOutbox();
+        tap(1001,"rm:1:9999");
+        assertTrue(sentTo(1001).contains("исключить"));
+        assertEquals(0,count("SELECT count(*) FROM inbox WHERE state='FAILED'"));
     }
     @Test void teacherCreatesClassFromMenuAndGetsInviteLink() {
         send(1001,BotService.ADD_CLASS);send(1001,"8-B");
@@ -135,6 +231,7 @@ class BotIntegrationTest {
         assertTrue(sentTo(1001).contains("Ali &lt;b&gt;Valiyev&lt;/b&gt;"));assertTrue(sentTo(1001).contains("1 &lt; 2 &amp; 3 &gt; 2"));
     }
     @Test void setupModeOnlyTellsTheTelegramId() {
+        existingUser(5005);
         var unconfigured=new BotService(db,new BotProperties(false,"TEST","0",properties.telegramBaseUrl(),"EduPingBot","Asia/Tashkent"));
         new org.springframework.transaction.support.TransactionTemplate(new org.springframework.jdbc.datasource.DataSourceTransactionManager(db.getDataSource())).executeWithoutResult(s->unconfigured.handle(update(5005,"/class Hujum")));
         assertEquals(0,count("SELECT count(*) FROM classroom"));assertTrue(pendingText().contains("sozlanmagan")&&pendingText().contains("5005"));

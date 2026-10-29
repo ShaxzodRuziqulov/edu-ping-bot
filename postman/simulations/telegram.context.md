@@ -24,4 +24,5 @@ Start `postman simulation run postman/simulations/telegram.sim.yaml --port 4901 
 
 ## What didn't work
 
+- 2026-10-29: Postman simulation startup failed in dataset-daemon with Windows exception `0xc0000008` (including a PTY retry). The same tracked Telegram fixture was served directly through Node with JSON-body and `/telegram` prefix adapters. `mvnw.cmd -o verify` passed 37 PostgreSQL integration tests, including selected-language `setMyCommands` delivery through real HTTP. This verifies the application against the local fixture, not a successful Postman simulation run or real Telegram. No fixture contract was changed.
 - 2026-10-28: first database start's process disappeared after its tool session exited; a foreground persistent PostgreSQL session fixed connection refused. This was local test setup, not a bot failure.
